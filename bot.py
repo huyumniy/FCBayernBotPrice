@@ -56,11 +56,12 @@ if __name__=="__main__":
         "profile.password_manager_enabled": False}
     options.add_experimental_option("prefs", prefs)
 
-    current_script_dir = os.path.dirname(os.path.abspath(__file__))
+
     # Create the WebDriver with the configured ChromeOptions
     driver = webdriver.Chrome(
-        driver_executable_path = os.path.join(current_script_dir, 'chromedriver'),
+        driver_executable_path="D:\projects\FCBayernBotPrice\chromedriver.exe",
         options=options,
+        enable_cdp_events=True,
     )
     screen_width, screen_height = driver.execute_script(
         "return [window.screen.width, window.screen.height];")
