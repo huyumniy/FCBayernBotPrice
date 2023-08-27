@@ -1,5 +1,6 @@
 from selenium.webdriver.common.by import By
 import time
+import platform
 from random import choice
 import undetected_chromedriver as webdriver
 from pyshadow.main import Shadow
@@ -55,11 +56,15 @@ if __name__=="__main__":
     prefs = {"credentials_enable_service": False,
         "profile.password_manager_enabled": False}
     options.add_experimental_option("prefs", prefs)
-
-
+    
+    current_directory = os.getcwd()
+    is_windows = platform.system() == "Windows"
+    chromedriver_filename = "chromedriver.exe" if is_windows else "chromedriver"
+    chromedriver_path = os.path.join(current_directory, chromedriver_filename)
+    print(chromedriver_path)
     # Create the WebDriver with the configured ChromeOptions
     driver = webdriver.Chrome(
-        driver_executable_path="D:\projects\FCBayernBotPrice\chromedriver.exe",
+        driver_executable_path=chromedriver_path,
         options=options,
         enable_cdp_events=True,
     )
@@ -245,12 +250,12 @@ if __name__=="__main__":
                 else:
                     try:
                         nrow=row.text.split('\n')[:3]
-                        if int(nrow[0]) in P_BLOCKS and not MAXMIN:
+                        if nrow[0] in P_BLOCKS and not MAXMIN:
                             block_row_seat.append(nrow)
                     except:pass
             if near:
                 block_row = [brs[:2] for brs in block_row_seat]
-                accepted = [[int(inc) for inc in brs]
+                accepted = [[inc for inc in brs if inc]
                             for brs in block_row_seat if block_row.count(brs[:2]) >= num_seats]
                 magic_accepted = {}
 
@@ -260,14 +265,13 @@ if __name__=="__main__":
                 for ky in list(magic_accepted.keys()):
                     ky_accepted = []
                     for acc in accepted:
-                        if [int(k) for k in ky.split('-')] == acc[:2]:
+                        if [k for k in ky.split('-')] == acc[:2]:
                             if ky_accepted == [] or ky_accepted[-1][-1]-acc[-1] in [1, -1]:
                                 ky_accepted.append(acc)
                             else:
                                 ky_accepted = []
                     if len(ky_accepted) >= num_seats:
                         last_accepted.append(ky_accepted)
-
                 try:
                     selected_s = last_accepted[-1]
                 except:
@@ -286,8 +290,9 @@ if __name__=="__main__":
                         remhed()
                     continue
             else:
-                try:selected_s = [[int(brs) for brs in choice(block_row_seat)]
-                            for __ in range(num_seats)]
+                try:
+                    selected_s = [[brs for brs in choice(block_row_seat)]
+                    for __ in range(num_seats)]
                 except:
                     try:
                         if MAXMIN and maxprc>25:
