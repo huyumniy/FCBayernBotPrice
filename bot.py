@@ -7,15 +7,16 @@ from pyshadow.main import Shadow
 import sounddevice as sd
 import soundfile as sf
 import sys, os
-
+import eel
+import socket
+import shutil
+import tempfile
 
 
 WAITX = 30
-PROXY= True
 MAXMIN=True
 P_BLOCKS=list(range(101,107))+list(range(119,125))+list(range(229,233))
-def ensure_check_elem(selector, methode=By.XPATH, tmt=20, click=False):
-    global driver
+def ensure_check_elem(driver, selector, methode=By.XPATH, tmt=20, click=False):
     var = None
     tmt0 = 0
     while True:
@@ -43,7 +44,120 @@ def check():
         except Exception as r:
             print(r)
 
-if __name__=="__main__":
+
+class ProxyExtension:
+    manifest_json = """
+    {
+        "version": "1.0.0",
+        "manifest_version": 2,
+        "name": "Chrome Proxy",
+        "permissions": [
+            "proxy",
+            "tabs",
+            "unlimitedStorage",
+            "storage",
+            "<all_urls>",
+            "webRequest",
+            "webRequestBlocking"
+        ],
+        "background": {"scripts": ["background.js"]},
+        "minimum_chrome_version": "76.0.0"
+    }
+    """
+
+    background_js = """
+    var config = {
+        mode: "fixed_servers",
+        rules: {
+            singleProxy: {
+                scheme: "http",
+                host: "%s",
+                port: %d
+            },
+            bypassList: ["localhost"]
+        }
+    };
+
+    chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
+
+    function callbackFn(details) {
+        return {
+            authCredentials: {
+                username: "%s",
+                password: "%s"
+            }
+        };
+    }
+
+    chrome.webRequest.onAuthRequired.addListener(
+        callbackFn,
+        { urls: ["<all_urls>"] },
+        ['blocking']
+    );
+    """
+
+    def __init__(self, host, port, user, password):
+        self._dir = os.path.normpath(tempfile.mkdtemp())
+
+        manifest_file = os.path.join(self._dir, "manifest.json")
+        with open(manifest_file, mode="w") as f:
+            f.write(self.manifest_json)
+        background_js = self.background_js % (host, int(port), user, password)
+        background_file = os.path.join(self._dir, "background.js")
+        with open(background_file, mode="w") as f:
+            f.write(background_js)
+
+    @property
+    def directory(self):
+        return self._dir
+
+    def __del__(self):
+        shutil.rmtree(self._dir)
+
+ck_acc = False
+
+def remhed(driver):
+        try:
+            driver.execute_script("document.querySelector('#HeaderNav').remove();")
+        except:
+            pass
+
+
+def login(driver, shadow, ck_acc, USR, PWD):
+    driver.get(
+        'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
+    if not ck_acc:
+        while True:
+            try:
+                shadow.find_element(
+                    '[data-testid="uc-accept-all-button"]').click()
+                ck_acc = True
+                break
+            except:
+                time.sleep(.5)
+    ensure_check_elem(
+        driver, '//*[@class="header-actions"]//a[.//*[contains(text(),"Login")]]', click=True)
+    urlx = driver.current_url
+    usrnm = ensure_check_elem(driver, '//*[@id="username"]', click=True)
+    usrnm.clear()
+    usrnm.send_keys(USR)
+    passwd = ensure_check_elem(driver, '//*[@type="password"]', click=True)
+    passwd.clear()
+    passwd.send_keys(PWD+'\n')
+    lgntmt=0
+    while urlx == driver.current_url:
+        if lgntmt>=20:
+            login(driver, shadow, ck_acc, USR, PWD)
+        time.sleep(.5)
+        lgntmt+=.5
+    return 1
+
+
+@eel.expose
+def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block):
+    print(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block)
+    maxprc = float(maxprc)
+    minprc = float(minprc)
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
     #options.add_argument("--incognito")
@@ -56,7 +170,9 @@ if __name__=="__main__":
     prefs = {"credentials_enable_service": False,
         "profile.password_manager_enabled": False}
     options.add_experimental_option("prefs", prefs)
-    
+    proxy_extension = ProxyExtension(*(proxy.split(':')))
+    # options.add_argument(f"--load-extension={proxy_extension.directory},D:\\projects\\rugby-bot-resale\\NopeCHA")
+    options.add_argument(f"--load-extension={proxy_extension.directory}")
     current_directory = os.getcwd()
     is_windows = platform.system() == "Windows"
     chromedriver_filename = "chromedriver.exe" if is_windows else "chromedriver"
@@ -71,98 +187,31 @@ if __name__=="__main__":
     screen_width, screen_height = driver.execute_script(
         "return [window.screen.width, window.screen.height];")
     
-    desired_width = int(screen_width / 3)
-    desired_height = int(screen_height / 3)
+    desired_width = int(screen_width /2)
+    desired_height = int(screen_height)
     driver.set_window_position(0, 0)
     driver.set_window_size(desired_width, screen_height)
 
     #, driver_executable_path='./chromedriver'
     shadow = Shadow(driver)
 
-
-    USR=input('Username/Email: ')
-    PWD=input('password: ')
-    if PROXY:
-        driver.get('chrome://extensions')
-        input('start')
-    def remhed():
-        try:
-            driver.execute_script("document.querySelector('#HeaderNav').remove();")
-        except:
-            pass
-    def login():
-        global ck_acc
-        driver.get(
-            'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
-        if not ck_acc:
-            while True:
-                try:
-                    shadow.find_element(
-                        '[data-testid="uc-accept-all-button"]').click()
-                    ck_acc = True
-                    break
-                except:
-                    time.sleep(.5)
-        ensure_check_elem(
-            '//*[@class="header-actions"]//a[.//*[contains(text(),"Login")]]', click=True)
-        urlx = driver.current_url
-        usrnm = ensure_check_elem('//*[@id="username"]', click=True)
-        usrnm.clear()
-        usrnm.send_keys(USR)
-        passwd = ensure_check_elem('//*[@type="password"]', click=True)
-        passwd.clear()
-        passwd.send_keys(PWD+'\n')
-        lgntmt=0
-        while urlx == driver.current_url:
-            if lgntmt>=20:
-                login()
-            time.sleep(.5)
-            lgntmt+=.5
-        return 1
-
     ck_acc = False
     while True:
         # driver.delete_all_cookies()
         driver.execute_script("location.href='Logout.aspx';")
-        login()
+        print('making logout')
+        login(driver, shadow, ck_acc, USR, PWD)
+        print('pass login')
 
         driver.get(
             'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
-        while True:
-            try:
-                num_seats = int(input('Number Of seats: '))
-                break
-            except:
-                print('Please insert correct values')
+        num_seats = int(radio)
+       
         if MAXMIN:
-            while True:
-                try:
-                    maxprc = int(input('Max Price: '))
-                    break
-                except:
-                    print('Please insert correct values')
-            while True:
-                try:
-                    minprc = int(input('Min Price: '))
-                    break
-                except:
-                    print('Please insert correct values')
-        while True:
-            if MAXMIN:
-                category=False
-                break
-            try:
-                category = int(input('Category [number or 999 for all]: '))
-                if category == 999:
-                    category = False
-                break
-            except:
-                print('Please insert correct values')
+            category=False
+        if category == 999:
+            category = False
 
-        near = input(
-            'Near Each Other [Y:N] (default is N):').lower().strip() == "y"
-        preferred_block = input(
-            'Preferred Blocks Only [Y:N] (default is N):').lower().strip() == "y"
         nx_sel = '//table[.//*[contains(text()," from ")]]//*[@src="Images/Icons/next.png"]'
         pr_sel = '//table[.//*[contains(text()," from ")]]//*[@src="Images/Icons/prev.png"]'
         bx_sel = '//*[@class="side-box-container"][.//*[contains(text(),"buy online") or contains(text(),"Mem")]]'
@@ -172,7 +221,7 @@ if __name__=="__main__":
         while not selected:
             time.sleep(3)
             try:
-                ensure_check_elem(bx_sel, tmt=3)
+                ensure_check_elem(driver, bx_sel, tmt=3)
             except:
                 pass
             boxes = driver.find_elements(By.XPATH, bx_sel)
@@ -202,7 +251,7 @@ if __name__=="__main__":
                     driver.execute_script(mtc[int(comd)])
                     time.sleep(1)
                     ensure_check_elem(
-                        '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=60)
+                        driver, '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=60)
                     selected = True
                     break
                 except:
@@ -211,30 +260,30 @@ if __name__=="__main__":
                     print('Please insert a correct command...')
                 else:
                     if comd == 'next':
-                        ensure_check_elem(nx_sel, click=True)
+                        ensure_check_elem(driver, nx_sel, click=True)
                         break
                     elif comd == 'prev':
-                        ensure_check_elem(pr_sel, click=True)
+                        ensure_check_elem(driver, pr_sel, click=True)
                         break
 
         rw_sel = '//*[@id="ctl00_ContentMiddle_TicketList1_GridView1"]//tr[.//*[contains(text(),"Add")]]/td[.//*[contains(text(),"€")]]'
         gut = True
         while True:
-            remhed()
+            remhed(driver)
             if category:
                 try:
-                    ensure_check_elem('//*[@title="Show all tickets"]', click=True)
-                    ensure_check_elem(
+                    ensure_check_elem(driver, '//*[@title="Show all tickets"]', click=True)
+                    ensure_check_elem(driver, 
                         f'//li[contains(text(),"e {category}")]',tmt=3, click=True)
                     time.sleep(1)
-                    ensure_check_elem(
+                    ensure_check_elem(driver, 
                         '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=600)
                 except:
                     time.sleep(WAITX)
                     driver.refresh()
                     continue
             try:
-                ensure_check_elem(rw_sel).text
+                ensure_check_elem(driver, rw_sel).text
             except:
                 print('No available tickets')
                 time.sleep(WAITX)#delay 1
@@ -266,7 +315,7 @@ if __name__=="__main__":
                     ky_accepted = []
                     for acc in accepted:
                         if [k for k in ky.split('-')] == acc[:2]:
-                            if ky_accepted == [] or ky_accepted[-1][-1]-acc[-1] in [1, -1]:
+                            if ky_accepted == [] or int(ky_accepted[-1][-1]) - int(acc[-1]) in [1, -1]:
                                 ky_accepted.append(acc)
                             else:
                                 ky_accepted = []
@@ -277,17 +326,17 @@ if __name__=="__main__":
                 except:
                     try:
                         if MAXMIN and maxprc>25:
-                            ensure_check_elem('//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
+                            ensure_check_elem(driver, '//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
                         elif MAXMIN and 25>=maxprc:
-                            ensure_check_elem('//*[contains(@id,"btnLastPag")]',tmt=1,click=True)
+                            ensure_check_elem(driver, '//*[contains(@id,"btnLastPag")]',tmt=1,click=True)
                         else:
-                            ensure_check_elem('//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
-                        ensure_check_elem(
+                            ensure_check_elem(driver, '//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
+                        ensure_check_elem(driver, 
                                 '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=30)
                     except:
                         time.sleep(WAITX)
                         driver.refresh()
-                        remhed()
+                        remhed(driver)
                     continue
             else:
                 try:
@@ -296,17 +345,17 @@ if __name__=="__main__":
                 except:
                     try:
                         if MAXMIN and maxprc>25:
-                            ensure_check_elem('//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
+                            ensure_check_elem(driver, '//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
                         elif MAXMIN and 25>=maxprc:
-                            ensure_check_elem('//*[contains(@id,"btnLastPag")]',tmt=1,click=True)
+                            ensure_check_elem(driver, '//*[contains(@id,"btnLastPag")]',tmt=1,click=True)
                         else:
-                            ensure_check_elem('//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
-                        ensure_check_elem(
+                            ensure_check_elem(driver, '//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
+                        ensure_check_elem(driver, 
                                 '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=30)
                     except:
                         time.sleep(WAITX)
                         driver.refresh()
-                        remhed()
+                        remhed(driver)
                     continue
             
             for s in selected_s[:num_seats]:
@@ -323,19 +372,19 @@ if __name__=="__main__":
                         ckckc = driver.find_element(By.XPATH, seat_sel)
                         driver.execute_script(
                             "arguments[0].scrollIntoView()", ckckc)
-                        ensure_check_elem(seat_sel, click=True)
+                        ensure_check_elem(driver, seat_sel, click=True)
                         time.sleep(.5)
 
                     except:
                         break
                     while True:
                         try:
-                            ensure_check_elem(
+                            ensure_check_elem(driver,
                                 '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=1)
                             try:
-                                ensure_check_elem(
+                                ensure_check_elem(driver, 
                                     '//*[@value="Back"]', tmt=1, click=True)
-                                remhed()
+                                remhed(driver)
                                 gut = False
                                 break
                             except:
@@ -348,7 +397,7 @@ if __name__=="__main__":
                 continue
             try:
                 driver.execute_script('window.scrollTo(0,0);')
-                ensure_check_elem(
+                ensure_check_elem(driver, 
                     '//td//*[@href="showcart.aspx"]', tmt=5, click=True)
             except:
                 pass
@@ -360,3 +409,29 @@ if __name__=="__main__":
         if lastcom.strip() == 'q':
             driver.quit()
             exit()
+
+
+
+def is_port_open(host, port):
+  try:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    sock.connect((host, port))
+    return True
+  except (socket.timeout, ConnectionRefusedError):
+    return False
+  finally:
+    sock.close()
+
+
+if __name__ == "__main__":
+  eel.init('web')
+  port = 8000
+  while True:
+    try:
+      if not is_port_open('localhost', port):
+        eel.start('main.html', size=(600, 800), port=port)
+        break
+      else: port+=1
+    except OSError as e:
+      print(e)
