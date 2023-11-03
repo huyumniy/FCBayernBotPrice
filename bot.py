@@ -14,7 +14,7 @@ import eel
 import socket
 import shutil
 import tempfile
-
+import datetime
 
 WAITX = 30
 MAXMIN=True
@@ -124,6 +124,14 @@ def remhed(driver):
             driver.execute_script("document.querySelector('#HeaderNav').remove();")
         except:
             pass
+
+
+def append_arrays_to_file(array1, array2, file_name):
+    current_datetime = datetime.datetime.now()
+    date_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    with open(file_name, "a") as file:
+        file.write(f"{date_str} - block_row_seat: {array1}\n")
+        file.write(f"{date_str} - accepted: {array2}\n")
 
 
 def login(driver, shadow, USR, PWD):
@@ -317,7 +325,8 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                     accepted = [[inc for inc in brs if inc]
                             for brs 
                             in block_row_seat if block_row.count(brs[:2]) >= num_seats]
-                print("accepted", accepted)
+                append_arrays_to_file(block_row_seat, accepted, 'logs.txt')
+
                 magic_accepted = {}
 
                 for acc in accepted:

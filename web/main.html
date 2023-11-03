@@ -296,10 +296,10 @@
                 const proxy = document.querySelector('#proxy').value
                 const email = document.querySelector('#email').value
                 const password = document.querySelector('#password').value
-                let max_price = document.querySelector('#maxPrice').value == '' ? 999 : value
-                if (max_price=='') max_price=999
+                let max_price = document.querySelector('#maxPrice').value
+                max_price = max_price =='' ? 999 : max_price
                 let min_price = document.querySelector('#minPrice').value
-                if (min_price=='') min_price=999
+                min_price = min_price =='' ? 0 : min_price
                 const radio = check_radio()
                 const nearEachOther = document.querySelector('#nearEachOther').checked
                 const preferredBlocks = document.querySelector('#preferredBlocks').checked
