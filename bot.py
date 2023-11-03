@@ -3,6 +3,9 @@ import time
 import platform
 from random import choice
 import undetected_chromedriver as webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from pyshadow.main import Shadow
 import sounddevice as sd
 import soundfile as sf
@@ -123,18 +126,16 @@ def remhed(driver):
             pass
 
 
-def login(driver, shadow, ck_acc, USR, PWD):
+def login(driver, shadow, USR, PWD):
     driver.get(
         'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
-    if not ck_acc:
-        while True:
-            try:
-                shadow.find_element(
-                    '[data-testid="uc-accept-all-button"]').click()
-                ck_acc = True
-                break
-            except:
-                time.sleep(.5)
+    for _ in range(0, 10):
+        try:
+            shadow.find_element(
+                '[data-testid="uc-accept-all-button"]').click()
+            break
+        except:
+            time.sleep(1)
     ensure_check_elem(
         driver, '//*[@class="header-actions"]//a[.//*[contains(text(),"Login")]]', click=True)
     urlx = driver.current_url
@@ -147,17 +148,20 @@ def login(driver, shadow, ck_acc, USR, PWD):
     lgntmt=0
     while urlx == driver.current_url:
         if lgntmt>=20:
-            login(driver, shadow, ck_acc, USR, PWD)
+            login(driver, shadow, USR, PWD)
         time.sleep(.5)
         lgntmt+=.5
     return 1
 
 
+
 @eel.expose
-def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block):
+def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_category):
+    
     print(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block)
     maxprc = float(maxprc)
     minprc = float(minprc)
+    
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
     #options.add_argument("--incognito")
@@ -195,16 +199,16 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block):
     #, driver_executable_path='./chromedriver'
     shadow = Shadow(driver)
 
-    ck_acc = False
     while True:
-        # driver.delete_all_cookies()
         driver.execute_script("location.href='Logout.aspx';")
         print('making logout')
-        login(driver, shadow, ck_acc, USR, PWD)
-        print('pass login')
-
+        driver.delete_all_cookies()
         driver.get(
             'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
+        
+        login(driver, shadow, USR, PWD)
+        print('pass login')
+        
         num_seats = int(radio)
        
         if MAXMIN:
@@ -293,9 +297,10 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block):
             block_row_seat = []
             for row in driver.find_elements(By.XPATH, rw_sel):
                 rwdt=row.text.split('\n')
-                rwprc=float(rwdt[3].replace(',',".").split(' ')[0])
-                if MAXMIN and rwprc > minprc and maxprc > rwprc and not preferred_block:
-                    block_row_seat.append(rwdt[:3])
+                print(rwdt)
+                rwdt[3] = float(rwdt[3].replace(',',".").split(' ')[0])
+                if MAXMIN and rwdt[3] > minprc and maxprc > rwdt[3] and not preferred_block:
+                    block_row_seat.append(rwdt[:4])
                 else:
                     try:
                         nrow=row.text.split('\n')[:3]
@@ -304,8 +309,15 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block):
                     except:pass
             if near:
                 block_row = [brs[:2] for brs in block_row_seat]
-                accepted = [[inc for inc in brs if inc]
-                            for brs in block_row_seat if block_row.count(brs[:2]) >= num_seats]
+                if fifth_category:
+                    accepted = [[inc for inc in brs if inc]
+                            for brs 
+                            in block_row_seat if block_row.count(brs[:2]) >= num_seats or brs[3] < 20]
+                else:
+                    accepted = [[inc for inc in brs if inc]
+                            for brs 
+                            in block_row_seat if block_row.count(brs[:2]) >= num_seats]
+                print("accepted", accepted)
                 magic_accepted = {}
 
                 for acc in accepted:
@@ -423,6 +435,8 @@ def is_port_open(host, port):
   finally:
     sock.close()
 
+def print_value(n):
+    print(n)
 
 if __name__ == "__main__":
   eel.init('web')
@@ -431,6 +445,7 @@ if __name__ == "__main__":
     try:
       if not is_port_open('localhost', port):
         eel.start('main.html', size=(600, 800), port=port)
+        # eel.spawn(eel.continue_function()(print_value))
         break
       else: port+=1
     except OSError as e:
