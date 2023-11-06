@@ -127,11 +127,15 @@ def remhed(driver):
 
 
 def append_arrays_to_file(array1, array2, file_name):
-    current_datetime = datetime.datetime.now()
-    date_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
-    with open(file_name, "a") as file:
-        file.write(f"{date_str} - block_row_seat: {array1}\n")
-        file.write(f"{date_str} - accepted: {array2}\n")
+    try:
+        current_datetime = datetime.datetime.now()
+        date_str = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+        with open(file_name, "a") as file:
+            file.write(f"{date_str} - block_row_seat: {array1}\n")
+            file.write(f"{date_str} - accepted: {array2}\n")
+    except:
+        with open(file_name, "a") as file:
+            file.write(f'{date_str} - cant write data')
 
 
 def login(driver, shadow, USR, PWD):
@@ -192,7 +196,6 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
     print(chromedriver_path)
     # Create the WebDriver with the configured ChromeOptions
     driver = webdriver.Chrome(
-        driver_executable_path=chromedriver_path,
         options=options,
         enable_cdp_events=True,
     )
@@ -303,29 +306,36 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                 continue
             
             block_row_seat = []
+            block_row_seat_price = []
             for row in driver.find_elements(By.XPATH, rw_sel):
                 rwdt=row.text.split('\n')
-                print(rwdt)
-                rwdt[3] = float(rwdt[3].replace(',',".").split(' ')[0])
-                if MAXMIN and rwdt[3] > minprc and maxprc > rwdt[3] and not preferred_block:
-                    block_row_seat.append(rwdt[:4])
+                rwprc = float(rwdt[3].replace(',',".").split(' ')[0])
+                if MAXMIN and rwprc > minprc and maxprc > rwprc and not preferred_block:
+                    block_row_seat.append(rwdt[:3])
+                    block_row_seat_price.append(rwdt[:3] + [rwprc])
                 else:
                     try:
                         nrow=row.text.split('\n')[:3]
                         if nrow[0] in P_BLOCKS and not MAXMIN:
                             block_row_seat.append(nrow)
+                            block_row_seat_price.append(nrow + [rwprc])
                     except:pass
             if near:
                 block_row = [brs[:2] for brs in block_row_seat]
+                accepted = []
                 if fifth_category:
-                    accepted = [[inc for inc in brs if inc]
-                            for brs 
-                            in block_row_seat if block_row.count(brs[:2]) >= num_seats or brs[3] < 20]
+                    for index, brs in enumerate(block_row_seat):
+                        if block_row.count(brs[:2]) >= num_seats or block_row_seat_price[index][3] < 20:
+                            inc_list = []
+                            for inc in brs:
+                                if inc:
+                                    inc_list.append(inc)
+                            accepted.append((inc_list))
                 else:
                     accepted = [[inc for inc in brs if inc]
                             for brs 
                             in block_row_seat if block_row.count(brs[:2]) >= num_seats]
-                append_arrays_to_file(block_row_seat, accepted, 'logs.txt')
+                append_arrays_to_file(block_row_seat_price, accepted, 'logs.txt')
 
                 magic_accepted = {}
 
