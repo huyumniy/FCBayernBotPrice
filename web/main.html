@@ -6,187 +6,9 @@
     <title>Bayern-bot</title>
     <link rel="icon" type="image/x-icon" href="ico1.ico?v=2"  />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="style.css">
     <script src="eel.js"></script>
     <style>
-        body {
-            background: #2196f3;  /* fallback for old browsers */
-            background: -webkit-linear-gradient(to right, #f44336, #2196f3);  /* Chrome 10-25, Safari 5.1-6 */
-            background: linear-gradient(to right, #f44336, #2196f3); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-
-            margin: 0;
-            padding: 0;
-
-            color: aliceblue;
-            font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-        }
-        .main {
-            margin: 0px 8rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            
-        }
-        .proxy {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
-        }
-        .data {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            gap: 10px;
-            align-items: center;
-            justify-content: center;
-        }
-        input {
-            display: flex;
-            border: none;
-            background: rgba(255, 255, 255, .5);
-            border-radius: 10px;
-            padding: 10px;
-            color: aliceblue;
-            outline: none;
-            width: 250px;
-            font-size: 16px;
-            color: #0F2027;
-        }
-        .items {
-            display: flex;
-            width: 250px;
-            justify-content: space-between;
-        }
-        .items input {
-            height: 16px;
-            width: 16px;
-        }
-        #run {
-            height: 50px;
-            width: 190px;
-            font-size: 24px;
-            border-radius: 15px;
-            border: solid;
-            bottom: 0;
-            
-        }
-
-        .active {
-            color:chartreuse;
-            background: #0F2027;  /* fallback for old browsers */
-            background: -webkit-linear-gradient(to right, #2C5364, #203A43, #0F2027);  /* Chrome 10-25, Safari 5.1-6 */
-            background: linear-gradient(to right, #2C5364, #203A43, #0F2027); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-            cursor:pointer;
-            border: solid;
-        }
-
-
-        .disabled {
-            cursor: default;
-            border: none;
-            background: #0F2027;  /* fallback for old browsers */
-            background: -webkit-linear-gradient(to right, #2C5364, #203A43, #0F2027);  /* Chrome 10-25, Safari 5.1-6 */
-            background: linear-gradient(to right, #2C5364, #203A43, #0F2027); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-        }
-
-        #seats form {
-            display: grid;
-            grid-template-columns: repeat(8, .1fr);
-            gap: 10px;
-            padding: 10px 0px;
-        }
-
-        #seats input {
-            width: 25px;
-        }
-
-        .checkbox {
-            display: flex;
-            padding: 10px 0px;
-        }
-
-        .checkbox input {
-            height: 15px;
-            width: 15px;
-        }
-        
-        .inputs {
-            padding: 10px 0px;
-            
-        }
-        .start {
-            display: flex;
-            justify-content: center;
-        }
-        h3 {
-            margin: 0;
-            padding: 0;
-        }
-        .show-password-button {
-            position: relative;
-            right: px;
-            cursor: pointer;
-        }
-        .inputs i {
-            cursor: pointer;
-        }
-        .show-hide {
-            display: flex;
-            justify-content:end;
-            align-items: center;
-        }
-        #password {
-            width: 250px;
-        }
-
-        .show-hide i {
-            position: absolute;
-            padding: 10px;
-        }
-        .hidden {
-            display: none;
-        }
-        .choose {
-            display: flex;
-            flex-direction: row;
-            gap: 25px;
-        }
-        #info_popup {
-            position: absolute;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            background-color: rgba(0, 0, 0, .5);
-            display: flex;
-            gap: 10px;
-            width: 100vw;
-            height: 100vh;
-            font-size: 48px;
-        }
-        .do_continue {
-            border: none;
-            border-radius: 15px;
-            color: #0F2027;
-            width: 200px;
-            height: 100px;
-            font-size: 48px;
-        }
-        .yes {
-            background: #a8ff78;  /* fallback for old browsers */
-            background: -webkit-linear-gradient(to right, #78ffd6, #a8ff78);  /* Chrome 10-25, Safari 5.1-6 */
-            background: linear-gradient(to right, #78ffd6, #a8ff78); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-
-        }
-        .no {
-            background: #FF416C;  /* fallback for old browsers */
-            background: -webkit-linear-gradient(to right, #FF4B2B, #FF416C);  /* Chrome 10-25, Safari 5.1-6 */
-            background: linear-gradient(to right, #FF4B2B, #FF416C); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-
-        }
 
     </style>
 </head>
@@ -219,17 +41,17 @@
             </div>
             <h3>Number Of Seats:</h3>
             <div id="seats">
-            <form>
-              <input type="radio" id="seats1" name="seats" value="1" checked>
-              <label for="seats1">1</label>
-              <input type="radio" id="seats2" name="seats" value="2">
-              <label for="seats2">2</label>
-              <input type="radio" id="seats3" name="seats" value="3">
-              <label for="seats3">3</label>
-              <input type="radio" id="seats4" name="seats" value="4">
-              <label for="seats4">4</label>
-            </form>
-            </div>
+              <form>
+                  <input type="checkbox" id="seats1" name="seats" value="1">
+                  <label for="seats1">1</label>
+                  <input type="checkbox" id="seats2" name="seats" value="2">
+                  <label for="seats2">2</label>
+                  <input type="checkbox" id="seats3" name="seats" value="3">
+                  <label for="seats3">3</label>
+                  <input type="checkbox" id="seats4" name="seats" value="4">
+                  <label for="seats4">4</label>
+              </form>
+          </div>
           
             <div class="inputs">
               <h3 for="maxPrice">Max Price:</h3>
@@ -289,24 +111,32 @@
                 }
          }
 
-        async function start(button) {
+         async function start(button) {
             if (button.getAttribute("class") == "active") {
                 button.innerHTML = '';
                 button.style.color = "#0F2027";
-                const proxy = document.querySelector('#proxy').value
-                const email = document.querySelector('#email').value
-                const password = document.querySelector('#password').value
-                let max_price = document.querySelector('#maxPrice').value
-                max_price = max_price =='' ? 999 : max_price
-                let min_price = document.querySelector('#minPrice').value
-                min_price = min_price =='' ? 0 : min_price
-                const radio = check_radio()
-                const nearEachOther = document.querySelector('#nearEachOther').checked
-                const preferredBlocks = document.querySelector('#preferredBlocks').checked
-                const fifthCategory = document.querySelector('#fifthCategory').checked
+                const proxy = document.querySelector('#proxy').value;
+                const email = document.querySelector('#email').value;
+                const password = document.querySelector('#password').value;
+                let max_price = document.querySelector('#maxPrice').value;
+                max_price = max_price == '' ? 999 : max_price;
+                let min_price = document.querySelector('#minPrice').value;
+                min_price = min_price == '' ? 0 : min_price;
+                const selectedSeats = getSelectedSeats(); // Get selected seats as an array
+                const nearEachOther = document.querySelector('#nearEachOther').checked;
+                const preferredBlocks = document.querySelector('#preferredBlocks').checked;
+                const fifthCategory = document.querySelector('#fifthCategory').checked;
                 set_disabled_checkboxes();
-                await eel.main(proxy, email, password, max_price, min_price, radio, nearEachOther, preferredBlocks, fifthCategory)();
+                await eel.main(proxy, email, password, max_price, min_price, selectedSeats, nearEachOther, preferredBlocks, fifthCategory)();
             }
+        }
+
+        function getSelectedSeats() {
+            const selectedSeats = [];
+            document.querySelectorAll('#seats input[type="checkbox"]:checked').forEach((checkbox) => {
+                selectedSeats.push(parseInt(checkbox.value));
+            });
+            return selectedSeats;
         }
 
 

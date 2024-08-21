@@ -186,9 +186,10 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
     prefs = {"credentials_enable_service": False,
         "profile.password_manager_enabled": False}
     options.add_experimental_option("prefs", prefs)
-    proxy_extension = ProxyExtension(*(proxy.split(':')))
-    # options.add_argument(f"--load-extension={proxy_extension.directory},D:\\projects\\rugby-bot-resale\\NopeCHA")
-    options.add_argument(f"--load-extension={proxy_extension.directory}")
+    if proxy:
+        proxy_extension = ProxyExtension(*(proxy.split(':')))
+        # options.add_argument(f"--load-extension={proxy_extension.directory},D:\\projects\\rugby-bot-resale\\NopeCHA")
+        options.add_argument(f"--load-extension={proxy_extension.directory}")
     current_directory = os.getcwd()
     is_windows = platform.system() == "Windows"
     chromedriver_filename = "chromedriver.exe" if is_windows else "chromedriver"
@@ -220,7 +221,7 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
         login(driver, shadow, USR, PWD)
         print('pass login')
         
-        num_seats = int(radio)
+        num_seats = radio if radio != [] else [0]
        
         if MAXMIN:
             category=False
@@ -325,7 +326,7 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                 accepted = []
                 if fifth_category:
                     for index, brs in enumerate(block_row_seat):
-                        if block_row.count(brs[:2]) >= num_seats or block_row_seat_price[index][3] < 20:
+                        if block_row.count(brs[:2]) >= min(num_seats) and block_row.count(brs[:2]) <= max(num_seats) or block_row_seat_price[index][3] < 20:
                             inc_list = []
                             for inc in brs:
                                 if inc:
@@ -334,7 +335,7 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                 else:
                     accepted = [[inc for inc in brs if inc]
                             for brs 
-                            in block_row_seat if block_row.count(brs[:2]) >= num_seats]
+                            in block_row_seat if block_row.count(brs[:2]) >= min(num_seats) and block_row.count(brs[:2]) <= max(num_seats)]
                 append_arrays_to_file(block_row_seat_price, accepted, 'logs.txt')
 
                 magic_accepted = {}
@@ -350,9 +351,10 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                                 ky_accepted.append(acc)
                             else:
                                 ky_accepted = []
-                    if len(ky_accepted) >= num_seats:
+                    if len(ky_accepted) >= min(num_seats) and len(ky_accepted) <= max(num_seats):
                         last_accepted.append(ky_accepted)
                 try:
+                    print(last_accepted)
                     selected_s = last_accepted[-1]
                 except:
                     try:
@@ -372,7 +374,7 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
             else:
                 try:
                     selected_s = [[brs for brs in choice(block_row_seat)]
-                    for __ in range(num_seats)]
+                    for __ in range(max(num_seats))]
                 except:
                     try:
                         if MAXMIN and maxprc>25:
@@ -388,10 +390,10 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                         driver.refresh()
                         remhed(driver)
                     continue
-            
-            for s in selected_s[:num_seats]:
+            for s in selected_s[:max(num_seats)]:
                 try:
-                    if int(driver.find_element(By.XPATH, '//b[contains(text(),"position")]').text.split(' ')[0]) >= num_seats:# and near is False
+                    position = int(driver.find_element(By.XPATH, '//b[contains(text(),"position")]').text.split(' ')[0])
+                    if position >= min(num_seats) and position <= max(num_seats):# and near is False
                         break
                 except:
                     pass
@@ -464,6 +466,7 @@ if __name__ == "__main__":
     try:
       if not is_port_open('localhost', port):
         eel.start('main.html', size=(600, 800), port=port)
+        eel.continue_function()(print)
         # eel.spawn(eel.continue_function()(print_value))
         break
       else: port+=1
