@@ -54,6 +54,12 @@ input {
     height: 16px;
     width: 16px;
 }
+
+.buttons {
+    display: flex;
+    gap: 15px;
+}
+
 #run {
     height: 50px;
     width: 190px;
@@ -64,8 +70,26 @@ input {
     
 }
 
+#restart {
+    height: 50px;
+    width: 190px;
+    font-size: 24px;
+    border-radius: 15px;
+    border: solid;
+    bottom: 0;
+}
+
 .active {
     color:chartreuse;
+    background: #0F2027;  /* fallback for old browsers */
+    background: -webkit-linear-gradient(to right, #2C5364, #203A43, #0F2027);  /* Chrome 10-25, Safari 5.1-6 */
+    background: linear-gradient(to right, #2C5364, #203A43, #0F2027); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+    cursor:pointer;
+    border: solid;
+}
+
+.active-restart {
+    color:gold;
     background: #0F2027;  /* fallback for old browsers */
     background: -webkit-linear-gradient(to right, #2C5364, #203A43, #0F2027);  /* Chrome 10-25, Safari 5.1-6 */
     background: linear-gradient(to right, #2C5364, #203A43, #0F2027); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
@@ -176,4 +200,22 @@ h3 {
     background: -webkit-linear-gradient(to right, #FF4B2B, #FF416C);  /* Chrome 10-25, Safari 5.1-6 */
     background: linear-gradient(to right, #FF4B2B, #FF416C); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
 
+}
+
+.connectionType {
+    display: flex;
+}
+
+.connectionType input {
+    width: 25px;
+}
+
+.connectionChoice {
+    display: flex;
+    width: 250px;
+    justify-content: space-between;
+}
+
+#adspowerInput {
+    display: flex;
 }

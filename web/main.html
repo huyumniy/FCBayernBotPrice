@@ -77,19 +77,48 @@
                 <h3 for="preferredBlocks">5-та категорiя (будь-якi):</h3>
                 <input type="checkbox" id="fifthCategory" name="preferredBlocks" value="N">
             </div>
-            <div class="start">
+            <div class="buttons">
+              <div class="start">
                 <button id="run" class="active">Start</button>
             </div>
+            <div class="restart">
+              <button id="restart" class="disabled">Restart</button>
+          </div>
+            </div>
+            
             
 
     
         </div> 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script type="text/javascript">
-        eel.expose(continue_function);
-        function continue_function() {
-            return 123
+
+        async function restart(button) {
+            if (button.getAttribute("class") == "active-restart") {
+                button.setAttribute("class", "disabled");
+                const proxy = document.querySelector('#proxy').value;
+                const email = document.querySelector('#email').value;
+                const password = document.querySelector('#password').value;
+                let max_price = document.querySelector('#maxPrice').value;
+                max_price = max_price == '' ? 999 : max_price;
+                let min_price = document.querySelector('#minPrice').value;
+                min_price = min_price == '' ? 0 : min_price;
+                const selectedSeats = getSelectedSeats();
+                const nearEachOther = document.querySelector('#nearEachOther').checked;
+                const preferredBlocks = document.querySelector('#preferredBlocks').checked;
+                const fifthCategory = document.querySelector('#fifthCategory').checked;
+                // Call the exposed Python function to restart the process
+                await eel.restart_main(proxy, email, password, max_price, min_price, selectedSeats, nearEachOther, preferredBlocks, fifthCategory)();
+                setTimeout(() => {
+                    button.setAttribute("class", "active-restart");
+                }, 5000);
+            }
         }
+
+        jQuery('#restart').on('click', function() {
+            const button = document.querySelector('#restart');
+            restart(button);
+        });
 
         const togglePassword = document.querySelector('#togglePassword');
         const password = document.querySelector('#password');
@@ -98,12 +127,6 @@
             password.setAttribute('type', type);
             this.classList.toggle('bi-eye');
         });
-
-        function set_disabled_checkboxes() {
-            const items = document.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
-            checkbox.setAttribute('disabled', '');
-            checkbox.removeAttribute('active');
-         })}
 
          function check_radio(){
             for (radio of document.querySelectorAll('input[type="radio"]')) {
@@ -126,7 +149,8 @@
                 const nearEachOther = document.querySelector('#nearEachOther').checked;
                 const preferredBlocks = document.querySelector('#preferredBlocks').checked;
                 const fifthCategory = document.querySelector('#fifthCategory').checked;
-                set_disabled_checkboxes();
+
+                document.querySelector('#restart').setAttribute("class", "active-restart");
                 await eel.main(proxy, email, password, max_price, min_price, selectedSeats, nearEachOther, preferredBlocks, fifthCategory)();
             }
         }

@@ -14,6 +14,7 @@ import eel
 import socket
 import shutil
 import tempfile
+import asyncio
 import datetime
 
 WAITX = 30
@@ -165,15 +166,22 @@ def login(driver, shadow, USR, PWD):
         lgntmt+=.5
     return 1
 
+data = {
+    'proxy': '',
+    'USR': '',
+    'PWD': '',
+    'maxprc': 999.0,
+    'minprc': 0,
+    'radio': [],
+    'near': False,
+    'preferred_block': False,
+    'fifth_category': False
+}
 
 
-@eel.expose
-def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_category):
-    
-    print(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block)
-    maxprc = float(maxprc)
-    minprc = float(minprc)
-    
+
+def run():
+    global data
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
     #options.add_argument("--incognito")
@@ -186,8 +194,8 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
     prefs = {"credentials_enable_service": False,
         "profile.password_manager_enabled": False}
     options.add_experimental_option("prefs", prefs)
-    if proxy:
-        proxy_extension = ProxyExtension(*(proxy.split(':')))
+    if data['proxy']:
+        proxy_extension = ProxyExtension(*(data['proxy'].split(':')))
         # options.add_argument(f"--load-extension={proxy_extension.directory},D:\\projects\\rugby-bot-resale\\NopeCHA")
         options.add_argument(f"--load-extension={proxy_extension.directory}")
     current_directory = os.getcwd()
@@ -218,10 +226,17 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
         driver.get(
             'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
         
-        login(driver, shadow, USR, PWD)
+        login(driver, shadow, data['USR'], data['PWD'])
         print('pass login')
-        
-        num_seats = radio if radio != [] else [0]
+        try:
+            if ensure_check_elem(driver, '//*[contains(text(),"Oops! Something went wrong")]', tmt=3):
+                data, fs = sf.read('proxy-error.mp3', dtype='float32')  
+                sd.play(data, fs)
+                status = sd.wait()
+                eel.sleep(WAITX)
+                continue
+        except: pass
+        num_seats = data['radio'] if data['radio'] != [] else [0]
        
         if MAXMIN:
             category=False
@@ -235,7 +250,7 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
         [driver.execute_script(x.get_attribute('href')) for x in driver.find_elements(
             By.XPATH, '//*[@class="card-container"]//a')]
         while not selected:
-            time.sleep(3)
+            eel.sleep(3)
             try:
                 ensure_check_elem(driver, bx_sel, tmt=3)
             except:
@@ -265,7 +280,7 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                 comd = input('Match ID or page commands >> ').lower().strip()
                 try:
                     driver.execute_script(mtc[int(comd)])
-                    time.sleep(1)
+                    eel.sleep(1)
                     ensure_check_elem(
                         driver, '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=60)
                     selected = True
@@ -291,18 +306,18 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                     ensure_check_elem(driver, '//*[@title="Show all tickets"]', click=True)
                     ensure_check_elem(driver, 
                         f'//li[contains(text(),"e {category}")]',tmt=3, click=True)
-                    time.sleep(1)
+                    eel.sleep(1)
                     ensure_check_elem(driver, 
                         '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=600)
                 except:
-                    time.sleep(WAITX)
+                    eel.sleep(WAITX)
                     driver.refresh()
                     continue
             try:
                 ensure_check_elem(driver, rw_sel).text
             except:
                 print('No available tickets')
-                time.sleep(WAITX)#delay 1
+                eel.sleep(WAITX)#delay 1
                 driver.refresh()
                 continue
             
@@ -311,7 +326,7 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
             for row in driver.find_elements(By.XPATH, rw_sel):
                 rwdt=row.text.split('\n')
                 rwprc = float(rwdt[3].replace(',',".").split(' ')[0])
-                if MAXMIN and rwprc > minprc and maxprc > rwprc and not preferred_block:
+                if MAXMIN and rwprc > data['minprc'] and data['maxprc'] > rwprc and not data['preferred_block']:
                     block_row_seat.append(rwdt[:3])
                     block_row_seat_price.append(rwdt[:3] + [rwprc])
                 else:
@@ -321,10 +336,10 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                             block_row_seat.append(nrow)
                             block_row_seat_price.append(nrow + [rwprc])
                     except:pass
-            if near:
+            if data['near']:
                 block_row = [brs[:2] for brs in block_row_seat]
                 accepted = []
-                if fifth_category:
+                if data['fifth_category']:
                     for index, brs in enumerate(block_row_seat):
                         if block_row.count(brs[:2]) >= min(num_seats) and block_row.count(brs[:2]) <= max(num_seats) or block_row_seat_price[index][3] < 20:
                             inc_list = []
@@ -358,16 +373,16 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                     selected_s = last_accepted[-1]
                 except:
                     try:
-                        if MAXMIN and maxprc>25:
+                        if MAXMIN and data['maxprc']>25:
                             ensure_check_elem(driver, '//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
-                        elif MAXMIN and 25>=maxprc:
+                        elif MAXMIN and 25>=data['maxprc']:
                             ensure_check_elem(driver, '//*[contains(@id,"btnLastPag")]',tmt=1,click=True)
                         else:
                             ensure_check_elem(driver, '//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
                         ensure_check_elem(driver, 
                                 '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=30)
                     except:
-                        time.sleep(WAITX)
+                        eel.sleep(WAITX)
                         driver.refresh()
                         remhed(driver)
                     continue
@@ -377,37 +392,42 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                     for __ in range(max(num_seats))]
                 except:
                     try:
-                        if MAXMIN and maxprc>25:
+                        if MAXMIN and data['maxprc']>25:
                             ensure_check_elem(driver, '//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
-                        elif MAXMIN and 25>=maxprc:
+                        elif MAXMIN and 25>=data['maxprc']:
                             ensure_check_elem(driver, '//*[contains(@id,"btnLastPag")]',tmt=1,click=True)
                         else:
                             ensure_check_elem(driver, '//*[contains(@id,"btnNextPag")]',tmt=1,click=True)
                         ensure_check_elem(driver, 
                                 '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=30)
                     except:
-                        time.sleep(WAITX)
+                        eel.sleep(WAITX)
                         driver.refresh()
                         remhed(driver)
                     continue
+            print(selected_s[:max(num_seats)])
+            print(data)
             for s in selected_s[:max(num_seats)]:
                 try:
                     position = int(driver.find_element(By.XPATH, '//b[contains(text(),"position")]').text.split(' ')[0])
                     if position >= min(num_seats) and position <= max(num_seats):# and near is False
+                        print('position: ', position)
                         break
                 except:
                     pass
-
+                try_to_purchase = 0
                 while True:
 
                     try:
+                        print(try_to_purchase)
+                        if try_to_purchase == 1: break
                         seat_sel = f'//td[.//p//span[1]//*[text()="{s[0]}"]][.//p//span[2]//*[text()="{s[1]}"]][.//p//span[3]//*[text()="{s[2]}"]]//a'
                         ckckc = driver.find_element(By.XPATH, seat_sel)
                         driver.execute_script(
                             "arguments[0].scrollIntoView()", ckckc)
                         ensure_check_elem(driver, seat_sel, click=True)
-                        time.sleep(.5)
-
+                        eel.sleep(.5)
+                        try_to_purchase += 1
                     except:
                         break
                     while True:
@@ -426,8 +446,14 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
                         except:
                             pass
             if gut == False:
-                time.sleep(WAITX)
+                eel.sleep(WAITX)
                 continue
+            cart_check_value = cart_check(driver, num_seats)
+            if not cart_check_value: 
+                print('in cart_check', cart_check_value)
+                eel.sleep(WAITX)
+                driver.refresh()
+                continue 
             try:
                 driver.execute_script('window.scrollTo(0,0);')
                 ensure_check_elem(driver, 
@@ -443,6 +469,45 @@ def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_ca
             driver.quit()
             exit()
 
+def cart_check(driver, num_seats):
+    try:
+        position = int(driver.find_element(By.XPATH, '//b[contains(text(),"position")]').text.split(' ')[0])
+        return position >= min(num_seats) and position <= max(num_seats)
+    except: return False
+
+@eel.expose
+def main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_category):
+    global data
+    data.update({
+        'proxy': proxy,
+        'USR': USR,
+        'PWD': PWD,
+        'maxprc': float(maxprc),
+        'minprc': float(minprc),
+        'radio': radio,
+        'near': near,
+        'preferred_block': preferred_block,
+        'fifth_category': fifth_category
+    })
+    eel.spawn(run)
+
+
+@eel.expose
+def restart_main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, fifth_category):
+    print("Restarting the process...")
+    global data
+    data.update({
+        'proxy': proxy,
+        'USR': USR,
+        'PWD': PWD,
+        'maxprc': float(maxprc),
+        'minprc': float(minprc),
+        'radio': radio,
+        'near': near,
+        'preferred_block': preferred_block,
+        'fifth_category': fifth_category
+    })
+    print("Process restarted.")
 
 
 def is_port_open(host, port):
@@ -461,12 +526,12 @@ def print_value(n):
 
 if __name__ == "__main__":
   eel.init('web')
+
   port = 8000
   while True:
     try:
       if not is_port_open('localhost', port):
         eel.start('main.html', size=(600, 800), port=port)
-        eel.continue_function()(print)
         # eel.spawn(eel.continue_function()(print_value))
         break
       else: port+=1
