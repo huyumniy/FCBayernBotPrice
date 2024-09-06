@@ -1,3 +1,5 @@
+from concurrent.futures import thread
+import threading
 from selenium.webdriver.common.by import By
 import time
 import platform
@@ -6,6 +8,7 @@ import undetected_chromedriver as webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select
 from pyshadow.main import Shadow
 import sounddevice as sd
 import soundfile as sf
@@ -14,12 +17,21 @@ import eel
 import socket
 import shutil
 import tempfile
+from pprint import pprint
 import asyncio
+import random
+import requests
+import json
 import datetime
 
 WAITX = 30
 MAXMIN=True
 P_BLOCKS=list(range(101,107))+list(range(119,125))+list(range(229,233))
+
+SPREADSHEET_ID = '1WMZaj7idACXKJO7ukdZcDhO807MhU2LoYP2DuJWJ5Wo'
+SHEET_TITLE = 'main'
+
+
 def ensure_check_elem(driver, selector, methode=By.XPATH, tmt=20, click=False):
     var = None
     tmt0 = 0
@@ -36,6 +48,54 @@ def ensure_check_elem(driver, selector, methode=By.XPATH, tmt=20, click=False):
         tmt0 += 0.5
         time.sleep(0.6)
     return var
+
+
+def check_for_element(driver, selector, click=False, xpath=False, debug=False):
+    try:
+        if xpath:
+            element = driver.find_element(By.XPATH, selector)
+        else:
+            element = driver.find_element(By.CSS_SELECTOR, selector)
+        if click: 
+            driver.execute_script("arguments[0].scrollIntoView();", element)
+            # slow_mouse_move_to_element(driver, element)
+            element.click()
+        return element
+    except Exception as e: 
+        if debug: print("selector: ", selector, "\n", e)
+        return False
+    
+
+def wait_for_element(driver, selector, timeout=10, xpath=False, debug=False):
+    try:
+        element = None
+        while timeout > 0:
+          try:
+              if xpath:
+                  element = driver.find_element(By.XPATH, selector)
+              else:
+                  element = driver.find_element(By.CSS_SELECTOR, selector)
+              break
+          except: 
+              time.sleep(1)
+              timeout-=1
+        return element
+    except Exception as e:
+        if debug: print("selector: ", selector, "\n", e)
+        return False
+
+
+
+def check_for_elements(driver, selector, xpath=False, debug=False):
+    try:
+        if xpath:
+            element = driver.find_elements(By.XPATH, selector)
+        else:
+            element = driver.find_elements(By.CSS_SELECTOR, selector)
+        return element
+    except Exception as e: 
+        if debug: print("selector: ", selector, "\n", e)
+        return False
 
 
 def check():
@@ -178,10 +238,50 @@ data = {
     'fifth_category': False
 }
 
+server_data = [
+  
+]
+
+def change_proxy(driver, proxy):
+    driver.get('chrome://extensions/')
+    js_code = """
+        const callback = arguments[0];
+        chrome.management.getAll((extensions) => {
+            callback(extensions);
+        });
+    """
+    extensions = driver.execute_async_script(js_code)
+    filtered_extensions = [extension for extension in extensions if 'Change your proxies with one click' in extension['description']]
+    
+    extension_id = [extension['id'] for extension in filtered_extensions if 'id' in extension][0]
+    vpn_url = f'chrome-extension://{extension_id}/popup.html'
+    print(vpn_url)
+    driver.get(vpn_url)
+    check_for_element(driver, '#editProxyList', click=True)
+    text_area = wait_for_element(driver, '.linedtextarea > textarea')
+    text_area.send_keys(proxy)
+    check_for_element(driver, '#addProxyOK', click=True)
+    # selectProxy = wait_for_element(driver, "//*[@id='proxySelectDiv']", xpath=True)
+    # selectProxy.click()
+    # wait_for_element(selectProxy, '')
+    for _ in range(0, 3):
+        try:
+            selectProxy = wait_for_element(driver, "#selectProxy")
+            drop = Select(selectProxy)
+            time.sleep(2)
+            drop.select_by_value(proxy)
+            time.sleep(2)
+            break
+        except Exception as e: print(e)
+    return True
 
 
-def run():
-    global data
+def run(model='0', server_data_id=1, id=1):
+    if model == '0':
+        global data
+    elif model == '1': 
+        data = server_data[server_data_id]
+    event = data.get('event')
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
     #options.add_argument("--incognito")
@@ -195,14 +295,17 @@ def run():
         "profile.password_manager_enabled": False}
     options.add_experimental_option("prefs", prefs)
     if data['proxy']:
-        proxy_extension = ProxyExtension(*(data['proxy'].split(':')))
-        # options.add_argument(f"--load-extension={proxy_extension.directory},D:\\projects\\rugby-bot-resale\\NopeCHA")
-        options.add_argument(f"--load-extension={proxy_extension.directory}")
+        cwd = os.getcwd()
+        proxy_extension = ''
+        if os.name == 'posix' and platform.system() == 'Darwin':
+            proxy_extension = cwd + "/BP-Proxy-Switcher-CUSTOM"
+        elif os.name == 'nt':
+            proxy_extension = cwd + "\\BP-Proxy-Switcher-CUSTOM"
+        options.add_argument(f"--load-extension={proxy_extension}")
     current_directory = os.getcwd()
     is_windows = platform.system() == "Windows"
     chromedriver_filename = "chromedriver.exe" if is_windows else "chromedriver"
     chromedriver_path = os.path.join(current_directory, chromedriver_filename)
-    print(chromedriver_path)
     # Create the WebDriver with the configured ChromeOptions
     driver = webdriver.Chrome(
         options=options,
@@ -215,17 +318,22 @@ def run():
     desired_height = int(screen_height)
     driver.set_window_position(0, 0)
     driver.set_window_size(desired_width, screen_height)
+    change_proxy(driver, data['proxy'])
 
     #, driver_executable_path='./chromedriver'
+    # input('continue?')
     shadow = Shadow(driver)
 
     while True:
+        if model == '1': 
+            data = server_data[server_data_id]
         driver.execute_script("location.href='Logout.aspx';")
         print('making logout')
         driver.delete_all_cookies()
         driver.get(
             'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
-        
+        proxy_input = wait_for_element(driver, '#proxyInput', timeout=5)
+        print(proxy_input.get_attribute('value'))
         login(driver, shadow, data['USR'], data['PWD'])
         print('pass login')
         try:
@@ -233,6 +341,7 @@ def run():
                 data, fs = sf.read('proxy-error.mp3', dtype='float32')  
                 sd.play(data, fs)
                 status = sd.wait()
+                post_request('http://localhost:40/book', {"message": f"Oops! Something went wrong ({data['USR']} {data['PWD']}). Номер рядка в таблиці {id}"})
                 eel.sleep(WAITX)
                 continue
         except: pass
@@ -249,57 +358,128 @@ def run():
         selected = False
         [driver.execute_script(x.get_attribute('href')) for x in driver.find_elements(
             By.XPATH, '//*[@class="card-container"]//a')]
-        while not selected:
-            eel.sleep(3)
-            try:
-                ensure_check_elem(driver, bx_sel, tmt=3)
-            except:
-                pass
-            boxes = driver.find_elements(By.XPATH, bx_sel)
-            mtc = []
-            for i, box in enumerate(boxes):
-                mtc.append(box.find_element(
-                    By.XPATH, '..//*[contains(text(),"buy online") or contains(text(),"Mem")]').get_attribute('href'))
-                print(i, '\t', box.find_element(
-                    By.XPATH, '..//strong').text.strip())
-            commands = []
-            try:
-                driver.find_element(By.XPATH, nx_sel)
-                commands.append('next')
-            except:
-                pass
-            try:
-                driver.find_element(By.XPATH, pr_sel)
-                commands.append('prev')
-            except:
-                pass
+        if not event:
+          while not selected:
+              eel.sleep(3)
+              try:
+                  ensure_check_elem(driver, bx_sel, tmt=3)
+              except:
+                  pass
+              boxes = driver.find_elements(By.XPATH, bx_sel)
+              mtc = []
+              for i, box in enumerate(boxes):
+                  mtc.append(box.find_element(
+                      By.XPATH, '..//*[contains(text(),"buy online") or contains(text(),"Mem")]').get_attribute('href'))
+                  print(i, '\t', box.find_element(
+                      By.XPATH, '..//strong').text.strip())
+              commands = []
+              try:
+                  driver.find_element(By.XPATH, nx_sel)
+                  commands.append('next')
+              except:
+                  pass
+              try:
+                  driver.find_element(By.XPATH, pr_sel)
+                  commands.append('prev')
+              except:
+                  pass
 
-            while True:
-                print('In addition to match ID, You can use one of these commands to change page [', ' | '.join(
-                    commands), ']')
-                comd = input('Match ID or page commands >> ').lower().strip()
-                try:
-                    driver.execute_script(mtc[int(comd)])
-                    eel.sleep(1)
-                    ensure_check_elem(
-                        driver, '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=60)
-                    selected = True
+              while True:
+                  print('In addition to match ID, You can use one of these commands to change page [', ' | '.join(
+                      commands), ']')
+                  comd = input('Match ID or page commands >> ').lower().strip()
+                  try:
+                      driver.execute_script(mtc[int(comd)])
+                      eel.sleep(1)
+                      ensure_check_elem(
+                          driver, '//*[@class="modalPopup"][contains(@style,"display: none;")]', tmt=60)
+                      selected = True
+                      break
+                  except:
+                      pass
+                  if comd not in commands:
+                      print('Please insert a correct command...')
+                  else:
+                      if comd == 'next':
+                          ensure_check_elem(driver, nx_sel, click=True)
+                          break
+                      elif comd == 'prev':
+                          ensure_check_elem(driver, pr_sel, click=True)
+                          break
+        elif event:
+          change_data = False
+          success_data = False
+          driver.execute_script("""
+                      document.querySelector('div[style*="height:80px"]').style.display = 'none';
+                  """)
+          while not change_data and not success_data:
+            try:
+                is_member = ''
+                for event_element in check_for_elements(driver, '.fcb-row-align-top'):
+                    event_ensure = check_for_element(event_element, f'//span[contains(text(), "{event}")]', xpath=True)
+                    if event_ensure:
+                        is_member = wait_for_element(event_element, '//*[contains(text(),"buy online") or contains(text(),"Booking for Members only")]', xpath=True)
+                        
+                        if not is_member:
+                            print(f"Не можливо придбати квитки на введеному аккаунті ({data['USR']} {data['PWD']}). Номер рядка в таблиці {id}")
+                            post_request('http://localhost:40/book', {"message": f"Не можливо придбати квитки на введеному аккаунті ({data['USR']} {data['PWD']}). Номер рядка в таблиці {id}"})
+                            time.sleep(300)
+                            change_data = True
+                            break  # Breaks from the for loop
+                        
+                        elif is_member:
+                            # Click on 'is_member'
+                            while True:
+                                if check_for_elements(driver, '.fcb-row-align-top'):
+                                    is_member.click()
+                                    time.sleep(5)
+                                else:
+                                    break
+                            
+                            success_data = True
+                            print("Member booking success!")
+                            break  # Breaks from the for loop
+
+                # Exit the loop if booking was successful
+                if success_data: break
+                if not is_member: continue
+
+                # Check for the next page
+                next_page = check_for_element(driver, nx_sel, click=True, xpath=True)
+
+                # Wait for the page to load
+                while not check_for_element(driver, "//div[@id='ctl00_PleaseWaitMessagePanel' and contains(@style, 'display: none')]", xpath=True):
+                    time.sleep(1)
+
+                # If there is no next page, handle the error and break
+                if not next_page:
+                    print(f'Введеної події {event} не існує, перевірте правильність написання')
+                    post_request('http://localhost:40/book', {"message": f"Введеної події {event} не існує, перевірте правильність написання. Номер рядка в таблиці {id}"})
+                    time.sleep(300)
+                    change_data = True
                     break
-                except:
-                    pass
-                if comd not in commands:
-                    print('Please insert a correct command...')
-                else:
-                    if comd == 'next':
-                        ensure_check_elem(driver, nx_sel, click=True)
-                        break
-                    elif comd == 'prev':
-                        ensure_check_elem(driver, pr_sel, click=True)
-                        break
+            except Exception as e:
+                print("Exception in loop", e)
 
+
+            # Ensure that the outer while loop continues only if `change_data` is set
+            if change_data:
+                continue
+
+
+                
         rw_sel = '//*[@id="ctl00_ContentMiddle_TicketList1_GridView1"]//tr[.//*[contains(text(),"Add")]]/td[.//*[contains(text(),"€")]]'
         gut = True
+        temp_data = ''
+        if model == '1': 
+            temp_data = data
+        restart_credentials = False
         while True:
+            if model == '1':
+                if temp_data['USR'] != server_data[server_data_id]['USR'] or temp_data['PWD'] != server_data[server_data_id]['PWD']:
+                    print('User credentials have changed. Exiting loop.')
+                    restart_credentials = True
+                    break
             remhed(driver)
             if category:
                 try:
@@ -461,9 +641,28 @@ def run():
             except:
                 pass
             break
-        data, fs = sf.read('noti.wav', dtype='float32')  
-        sd.play(data, fs)
+        if restart_credentials: continue
+        sound_data, fs = sf.read('noti.wav', dtype='float32')  
+        sd.play(sound_data, fs)
         status = sd.wait()
+
+        card_containers = check_for_elements(driver, 'td > .card-container')
+        data_to_send = f'*Усього квитків:* {len(card_containers)}\n'
+        for number, card_container in enumerate(card_containers):
+          event_info = check_for_elements(card_container, 'p > span > span')
+          event_name = event_info[1].text
+          seat_information = event_info[2].text
+          event_category = event_info[3].text
+          proxy_input = wait_for_element(driver, '#proxyInput', timeout=5)
+          print(proxy_input.get_attribute('value'))
+          price = check_for_element(card_container, 'div > div > span')
+          if price: price = price.text
+          data_to_send += f'*Квиток {number+1}:*\n*Event:* {event_name}\n*Seat Info:* {seat_information}\n*Category:* {event_category}\n*Price:* {price}\n\n'
+        data_to_send += f'*Url:* {driver.current_url}'
+        post_request('http://localhost:40/cookie', {"data": data_to_send, "cookie": driver.get_cookies(),\
+        'ua': driver.execute_script('return navigator.userAgent'), 'proxy': proxy_input.get_attribute('value')})
+        
+        
         lastcom = input('q: to quit or ENTER to start selecting again: ').lower()
         if lastcom.strip() == 'q':
             driver.quit()
@@ -510,6 +709,95 @@ def restart_main(proxy, USR, PWD, maxprc, minprc, radio, near, preferred_block, 
     print("Process restarted.")
 
 
+def parse_json_from_response(rep):
+    # Extract the substring starting from the 47th character to the second-to-last character
+    json_string = rep[47:-2]
+    
+    # Parse the JSON string
+    try:
+        parsed_data = json.loads(json_string)
+        return parsed_data
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON: {e}")
+        return None
+
+
+def get_request(url):
+    try:
+        print(url)
+        headers = {'Accept': 'application/json'}
+        response = requests.get(f"{url}", headers=headers)
+        return response.text
+    except Exception as e:
+        print("get_request Exception", e)
+    # Check the response status code
+    if response.status_code == 200:
+        print("GET request successful!")
+    else:
+        print("GET request failed.")
+
+
+def post_request(url, data=None):
+    try:
+        print(url)
+        headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
+        response = requests.post(f"{url}", headers=headers, json=data)
+        return response.text
+    except Exception as e:
+        print("post_request Exception", e)
+    # Check the response status code
+    if response.status_code == 200:
+        print("POST request successful!")
+    else:
+        print("POST request failed.")
+
+  
+def receive_sheet_data(sheet_raw):
+    return sheet_raw.get('v') if isinstance(sheet_raw, dict) else None
+
+
+
+
+def get_data_from_google_sheets():
+    global server_data
+    try:
+        sheet_range = "A1:K"
+        api_url = f'https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?sheet={SHEET_TITLE}&range={sheet_range}'
+        response = get_request(api_url)
+        sheet_data = parse_json_from_response(response)
+        data = []
+        if sheet_data['status'] == 'ok':
+          sheet_rows = sheet_data['table']['rows']
+          for sheet_row in sheet_rows:
+            email = receive_sheet_data(sheet_row['c'][0])
+            password = receive_sheet_data(sheet_row['c'][1])
+            proxy = receive_sheet_data(sheet_row['c'][2])
+            event = receive_sheet_data(sheet_row['c'][3])
+            amount_range = receive_sheet_data(sheet_row['c'][4])
+            min_price = receive_sheet_data(sheet_row['c'][5])
+            max_price = receive_sheet_data(sheet_row['c'][6])
+            category_5th = receive_sheet_data(sheet_row['c'][7])
+            near = receive_sheet_data(sheet_row['c'][8])
+            blocks = receive_sheet_data(sheet_row['c'][9])
+            data.append({
+                'proxy': proxy,
+                'USR': email,
+                'PWD': password,
+                'event': event,
+                'maxprc': max_price,
+                'minprc': min_price,
+                'radio': [int(amount) for amount in amount_range.split(' ')] if isinstance(amount_range, str) else int(amount_range),
+                'near': near,
+                'preferred_block': blocks,
+                'fifth_category': category_5th,
+                })
+          server_data = data
+
+    except Exception as e:
+        print(f"An error occurred in get_data_from_google_sheets: {e}")
+        return None
+    
+
 def is_port_open(host, port):
   try:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -521,19 +809,59 @@ def is_port_open(host, port):
   finally:
     sock.close()
 
-def print_value(n):
-    print(n)
+
+def check_model():
+  while True:
+    model = input("Choose model:\n0  Client Model [DEFAULT]\n1  Server Model\n--> ")
+    
+    if model == '0' or model == '1' or model == '':
+      # If empty string, set model to '0'
+      if model == '':
+        model = '0'
+      return model
+    else:
+        print("Invalid input. Please enter '0', '1', or leave it blank for default (0).")
+
+def periodic_google_sheet_check():
+    while True:
+        time.sleep(120)
+        print('Checking for googlesheet data...')
+        get_data_from_google_sheets()
+        print("Google Sheets data refreshed.")
+
 
 if __name__ == "__main__":
-  eel.init('web')
+    selected_model = check_model()
+    if selected_model == '0':
+        eel.init('web')
 
-  port = 8000
-  while True:
-    try:
-      if not is_port_open('localhost', port):
-        eel.start('main.html', size=(600, 800), port=port)
-        # eel.spawn(eel.continue_function()(print_value))
-        break
-      else: port+=1
-    except OSError as e:
-      print(e)
+        port = 8000
+        while True:
+            try:
+                if not is_port_open('localhost', port):
+                    eel.start('main.html', size=(600, 800), port=port)
+                    break
+                else:
+                    port += 1
+            except OSError as e:
+                print(e)
+    elif selected_model == '1':
+        # Start a thread for checking Google Sheets every 5 minutes
+        google_sheet_thread = threading.Thread(target=periodic_google_sheet_check)
+        google_sheet_thread.daemon = True  # Ensures thread exits when main program exits
+        google_sheet_thread.start()
+
+        get_data_from_google_sheets()  # Initial call to get the data
+
+        threads = []
+        for id, row in enumerate(server_data):
+            print(row)
+            thread = threading.Thread(target=run, args=('1', id, id + 2))
+            thread.start()
+            threads.append(thread)
+
+            delay = random.uniform(5, 10)
+            time.sleep(delay)
+
+        for thread in threads:
+            thread.join()

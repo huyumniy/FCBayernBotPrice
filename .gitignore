@@ -2,6 +2,11 @@ bin
 Include
 Lib
 Scripts
-/chromedriver-win64.zip
+pyvenv.cfg
+logs.txt
+
 /chromedriver.exe
-/proxy-extension.zip
+/slack-post/bin
+/slack-post/include
+/slack-post/pyvenv.cfg
+/slack-post/lib
