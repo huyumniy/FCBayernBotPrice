@@ -259,8 +259,10 @@ def change_proxy(driver, proxy):
     driver.get(vpn_url)
     check_for_element(driver, '#editProxyList', click=True)
     text_area = wait_for_element(driver, '.linedtextarea > textarea')
+    text_area.clear()
     text_area.send_keys(proxy)
     check_for_element(driver, '#addProxyOK', click=True)
+    driver.refresh()
     # selectProxy = wait_for_element(driver, "//*[@id='proxySelectDiv']", xpath=True)
     # selectProxy.click()
     # wait_for_element(selectProxy, '')
@@ -415,10 +417,13 @@ def run(model='0', server_data_id=1, id=1):
           while not change_data and not success_data:
             try:
                 is_member = ''
-                for event_element in check_for_elements(driver, '.fcb-row-align-top'):
-                    event_ensure = check_for_element(event_element, f'//span[contains(text(), "{event}")]', xpath=True)
+                for id, event_element in enumerate(check_for_elements(driver, '//*[@class="fcb-row-align-top"]', xpath=True)):
+                    print('INDEX:', id)
+                    event_ensure = check_for_element(event_element, f'.//div[2]/div[1]/strong/span[contains(text(), "{event}")]', xpath=True)
                     if event_ensure:
-                        is_member = wait_for_element(event_element, '//*[contains(text(),"buy online") or contains(text(),"Booking for Members only")]', xpath=True)
+                        print(event_ensure.text)
+                    if event_ensure:
+                        is_member = wait_for_element(event_element, './/*[contains(text(),"buy online") or contains(text(),"Booking for Members only")]', xpath=True)
                         
                         if not is_member:
                             print(f"Не можливо придбати квитки на введеному аккаунті ({data['USR']} {data['PWD']}). Номер рядка в таблиці {id}")
@@ -442,7 +447,7 @@ def run(model='0', server_data_id=1, id=1):
 
                 # Exit the loop if booking was successful
                 if success_data: break
-                if not is_member: continue
+                if is_member == None or is_member == False: continue
 
                 # Check for the next page
                 next_page = check_for_element(driver, nx_sel, click=True, xpath=True)
@@ -471,12 +476,24 @@ def run(model='0', server_data_id=1, id=1):
         rw_sel = '//*[@id="ctl00_ContentMiddle_TicketList1_GridView1"]//tr[.//*[contains(text(),"Add")]]/td[.//*[contains(text(),"€")]]'
         gut = True
         temp_data = ''
+        temp_url = driver.current_url
         if model == '1': 
             temp_data = data
         restart_credentials = False
+
         while True:
+            print(temp_data['proxy'], server_data[server_data_id]['proxy'])
+            if not check_for_element(driver, '#ctl00_ContentMiddle_TicketList1_GridView1'): 
+                restart_credentials = True
+                break
             if model == '1':
-                if temp_data['USR'] != server_data[server_data_id]['USR'] or temp_data['PWD'] != server_data[server_data_id]['PWD']:
+                print(temp_data['proxy'], server_data[server_data_id]['proxy'])
+                if temp_data['proxy'] != server_data[server_data_id]['proxy']:
+                    change_proxy(driver, server_data[server_data_id]['proxy'])
+                    restart_credentials = True
+                    break
+                if temp_data['USR'] != server_data[server_data_id]['USR'] or temp_data['PWD'] != server_data[server_data_id]['PWD'] or \
+                temp_data['event'] != server_data[server_data_id]['event']:
                     print('User credentials have changed. Exiting loop.')
                     restart_credentials = True
                     break
@@ -663,10 +680,7 @@ def run(model='0', server_data_id=1, id=1):
         'ua': driver.execute_script('return navigator.userAgent'), 'proxy': proxy_input.get_attribute('value')})
         
         
-        lastcom = input('q: to quit or ENTER to start selecting again: ').lower()
-        if lastcom.strip() == 'q':
-            driver.quit()
-            exit()
+        time.sleep(600)
 
 def cart_check(driver, num_seats):
     try:

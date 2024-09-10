@@ -4,7 +4,7 @@ from slack_sdk.errors import SlackApiError
 
 app = Flask(__name__)
 # Set up Slack API client
-slack_token = "xoxb-773919780944-7687532530339-KxcXhkVCxJPEvFWBieVLmbBD"
+slack_token = "xoxb-773919780944-7687532530339-uiHc3Wps8ei6PmS8EirmtN3E"
 slack_signing_secret = '89686c150358a5bd66fdd4030011b884'
 client = WebClient(token=slack_token)
 
