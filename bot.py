@@ -200,31 +200,38 @@ def append_arrays_to_file(array1, array2, file_name):
 
 
 def login(driver, shadow, USR, PWD):
-    driver.get(
-        'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
-    for _ in range(0, 10):
-        try:
-            shadow.find_element(
-                '[data-testid="uc-accept-all-button"]').click()
-            break
-        except:
-            time.sleep(1)
-    ensure_check_elem(
-        driver, '//*[@class="header-actions"]//a[.//*[contains(text(),"Login")]]', click=True)
-    urlx = driver.current_url
-    usrnm = ensure_check_elem(driver, '//*[@id="username"]', click=True)
-    usrnm.clear()
-    usrnm.send_keys(USR)
-    passwd = ensure_check_elem(driver, '//*[@type="password"]', click=True)
-    passwd.clear()
-    passwd.send_keys(PWD+'\n')
-    lgntmt=0
-    while urlx == driver.current_url:
-        if lgntmt>=20:
-            login(driver, shadow, USR, PWD)
-        time.sleep(.5)
-        lgntmt+=.5
-    return 1
+    while True:
+        driver.get(
+            'https://tickets.fcbayern.com/internetverkaufzweitmarkt/EventList.aspx')
+        for _ in range(0, 10):
+            try:
+                shadow.find_element(
+                    '[data-testid="uc-accept-all-button"]').click()
+                break
+            except:
+                time.sleep(1)
+        ensure_check_elem(
+            driver, '//*[@class="header-actions"]//a[.//*[contains(text(),"Login")]]', click=True)
+        urlx = driver.current_url
+
+        usrnm = check_for_element(driver, '//*[@id="username"]', debug=True, xpath=True, click=True)
+        if not usrnm: 
+            driver.execute_script("location.href='Logout.aspx';")
+            print('making logout')
+            driver.delete_all_cookies()
+            continue
+        usrnm.clear()
+        usrnm.send_keys(USR)
+        passwd = check_for_element(driver, '//*[@type="password"]', xpath=True, click=True)
+        passwd.clear()
+        passwd.send_keys(PWD+'\n')
+        lgntmt=0
+        while urlx == driver.current_url:
+            if lgntmt>=20:
+                login(driver, shadow, USR, PWD)
+            time.sleep(.5)
+            lgntmt+=.5
+        return 1
 
 data = {
     'proxy': '',
