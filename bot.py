@@ -214,7 +214,7 @@ def login(driver, shadow, USR, PWD):
             driver, '//*[@class="header-actions"]//a[.//*[contains(text(),"Login")]]', click=True)
         urlx = driver.current_url
 
-        usrnm = check_for_element(driver, '//*[@id="username"]', debug=True, xpath=True, click=True)
+        usrnm = check_for_element(driver, '//*[@id="username"]', xpath=True, click=True)
         if not usrnm: 
             driver.execute_script("location.href='Logout.aspx';")
             print('making logout')
